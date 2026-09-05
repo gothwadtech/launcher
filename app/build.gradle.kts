@@ -6,15 +6,15 @@ plugins {
 }
 
 android {
-    namespace = "com.conreo.couchytv"
+    namespace = "com.gothwad.tvlauncher"
     compileSdk = 34
 
     defaultConfig {
-        applicationId = "com.conreo.couchytv"
+        applicationId = "com.gothwad.tvlauncher"
         minSdk = 21
         targetSdk = 34
-        versionCode = 7
-        versionName = "1.0.6"
+        versionCode = (project.findProperty("versionCode") as? String)?.toIntOrNull() ?: 7
+        versionName = (project.findProperty("versionName") as? String) ?: "1.0.6"
     }
 
     // Release signing key, supplied by CI via environment variables (from GitHub
