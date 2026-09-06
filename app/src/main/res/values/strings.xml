@@ -222,4 +222,39 @@
     <string name="notifications_enable_btn">Grant Notification Access</string>
     <string name="item_notifications">Notifications</string>
     <string name="item_notifications_sub">Notification listener and alerts drawer</string>
+
+    <!-- Header Left Card & Permission Features -->
+    <string name="cd_voice_search">Voice Search</string>
+    <string name="cd_weather">Weather</string>
+    <string name="cd_bluetooth">Bluetooth &amp; Remote</string>
+    <string name="cd_dashboard">Quick Dashboard</string>
+    <string name="most_used_apps">Frequently Used</string>
+    <string name="most_used_apps_sub">Show your most opened apps automatically</string>
+    <string name="voice_search_title">Voice Search</string>
+    <string name="voice_search_listening">Listening… Speak app name</string>
+    <string name="voice_search_hint">Speak or type an app name…</string>
+    <string name="voice_search_mic_prompt">Click the microphone to speak</string>
+    <string name="permissions_title">Smart Permissions</string>
+    <string name="permission_usage_title">Most Used Apps (Usage Access)</string>
+    <string name="permission_usage_desc">Allows the launcher to organize and show your most frequently opened apps automatically on the home screen.</string>
+    <string name="permission_usage_stats_title">Usage Access Required</string>
+    <string name="permission_usage_stats_desc">To display your frequently used apps automatically, grant Usage Access permission.</string>
+    <string name="permission_location_title">Location Access for Weather</string>
+    <string name="permission_location_desc">Used to automatically fetch accurate local temperature and weather forecasts for your TV.</string>
+    <string name="permission_mic_title">Microphone Access for Voice Search</string>
+    <string name="permission_mic_desc">Used to search for apps and media quickly using your voice on TV remote or phone.</string>
+    <string name="permission_overlay_title">Draw Over Other Apps</string>
+    <string name="permission_overlay_desc">Allows opening the TV Quick Side Panel / Control Center on top of any active app.</string>
+    <string name="permission_bt_title">Bluetooth Remote &amp; Gamepad</string>
+    <string name="permission_bt_desc">Displays connected remote name and real-time battery percentage in the top header.</string>
+    <string name="permission_accessibility_title">Remote Button Remap (Accessibility)</string>
+    <string name="permission_accessibility_desc">Maps the remote Home key to Gothwad Launcher so it stays default on Google TV and Fire TV.</string>
+    <string name="control_center">Quick Dashboard</string>
+    <string name="volume">Volume</string>
+    <string name="mute">Mute</string>
+    <string name="standby">Sleep / Standby</string>
+    <string name="remote_battery">Remote: %1$d%%</string>
+    <string name="weather_auto_location">Auto location</string>
+    <string name="item_permissions">Smart Permissions</string>
+    <string name="item_permissions_sub">Usage stats, Weather location, Mic, Bluetooth, Overlay</string>
 </resources>

@@ -8,104 +8,219 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.ui.draw.clip
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.gothwad.tvlauncher.R
 import androidx.tv.material3.ClickableSurfaceDefaults
 import androidx.tv.material3.Icon
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Surface
 import androidx.tv.material3.Text
+import com.gothwad.tvlauncher.R
+import com.gothwad.tvlauncher.data.BluetoothDeviceStatus
 import com.gothwad.tvlauncher.data.NetStatus
+import com.gothwad.tvlauncher.data.WeatherData
 
 @Composable
 fun StatusBar(
     net: NetStatus,
+    bt: BluetoothDeviceStatus,
+    weather: WeatherData,
     time: String,
     date: String,
     showVpn: Boolean,
     glass: Boolean,
     notificationCount: Int,
     hasNotificationPermission: Boolean,
+    onDashboardClick: () -> Unit,
+    onVoiceSearchClick: () -> Unit,
+    onBluetoothClick: () -> Unit,
+    onWeatherClick: () -> Unit,
     onNotificationsClick: () -> Unit,
     onVpnClick: () -> Unit,
     onNetworkClick: () -> Unit,
     onSettingsClick: () -> Unit,
 ) {
-    // Optional glass panel behind the icon cluster — same look as the dock
-    // panel, corners follow the roundness setting.
+    // Symmetrical glass panels for both Left and Right clusters — matching dock look & roundness
     val cluster = if (glass) {
         Modifier
             .clip(SmoothCornerShape(LocalCornerRadius.current))
             .background(Color(0xB3121418))
             .background(Color.White.copy(alpha = 0.06f))
-            .padding(horizontal = 12.dp, vertical = 4.dp)
+            .padding(horizontal = 10.dp, vertical = 4.dp)
     } else Modifier
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 40.dp, vertical = 18.dp),
-        horizontalArrangement = Arrangement.End,
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-      Row(
-        modifier = cluster,
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
-        verticalAlignment = Alignment.CenterVertically,
-      ) {
-        // Order: VPN · network · notifications · settings · date · clock (clock far right)
-        if (showVpn) {
+        // TOP-LEFT CARD: Control Center, Voice Search, Remote Battery & Live Weather
+        Row(
+            modifier = cluster,
+            horizontalArrangement = Arrangement.spacedBy(4.dp, Alignment.Start),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             StatusIcon(
-                icon = AppIcons.Vpn,
-                active = net.vpn,
-                contentDescription = stringResource(R.string.cd_vpn),
-                onClick = onVpnClick,
+                icon = AppIcons.Dashboard,
+                active = true,
+                contentDescription = stringResource(R.string.cd_dashboard),
+                onClick = onDashboardClick,
+            )
+            StatusIcon(
+                icon = AppIcons.Mic,
+                active = true,
+                contentDescription = stringResource(R.string.cd_voice_search),
+                onClick = onVoiceSearchClick,
+            )
+            BluetoothStatusPill(
+                bt = bt,
+                onClick = onBluetoothClick,
+            )
+            WeatherStatusPill(
+                weather = weather,
+                onClick = onWeatherClick,
             )
         }
-        StatusIcon(
-            icon = when {
-                net.ethernet -> AppIcons.Ethernet
-                net.wifi -> AppIcons.Wifi
-                else -> AppIcons.WifiOff
-            },
-            active = net.connected,
-            contentDescription = stringResource(R.string.cd_network),
-            onClick = onNetworkClick,
-        )
-        NotificationStatusIcon(
-            count = notificationCount,
-            hasPermission = hasNotificationPermission,
-            onClick = onNotificationsClick,
-        )
-        StatusIcon(
-            icon = AppIcons.Gear,
-            active = true,
-            contentDescription = stringResource(R.string.cd_settings),
-            onClick = onSettingsClick,
-        )
-        if (date.isNotEmpty()) {
+
+        // TOP-RIGHT CARD: VPN, Network (Wi-Fi/Ethernet), Notifications, Settings, Date & Clock
+        Row(
+            modifier = cluster,
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.End),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (showVpn) {
+                StatusIcon(
+                    icon = AppIcons.Vpn,
+                    active = net.vpn,
+                    contentDescription = stringResource(R.string.cd_vpn),
+                    onClick = onVpnClick,
+                )
+            }
+            StatusIcon(
+                icon = when {
+                    net.ethernet -> AppIcons.Ethernet
+                    net.wifi -> AppIcons.Wifi
+                    else -> AppIcons.WifiOff
+                },
+                active = net.connected,
+                contentDescription = stringResource(R.string.cd_network),
+                onClick = onNetworkClick,
+            )
+            NotificationStatusIcon(
+                count = notificationCount,
+                hasPermission = hasNotificationPermission,
+                onClick = onNotificationsClick,
+            )
+            StatusIcon(
+                icon = AppIcons.Gear,
+                active = true,
+                contentDescription = stringResource(R.string.cd_settings),
+                onClick = onSettingsClick,
+            )
+            if (date.isNotEmpty()) {
+                Text(
+                    text = date,
+                    style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
+                    color = Color.White.copy(alpha = 0.75f),
+                    modifier = Modifier.padding(start = 8.dp),
+                )
+            }
             Text(
-                text = date,
+                text = time,
                 style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-                color = Color.White.copy(alpha = 0.75f),
-                modifier = Modifier.padding(start = 10.dp),
+                color = Color.White,
+                modifier = Modifier.padding(start = 8.dp),
             )
         }
-        Text(
-            // Tabular figures: digits keep a fixed width so the clock never jitters.
-            text = time,
-            style = MaterialTheme.typography.titleMedium.copy(fontFeatureSettings = "tnum"),
-            color = Color.White,
-            modifier = Modifier.padding(start = 10.dp),
-        )
-      }
+    }
+}
+
+@Composable
+private fun BluetoothStatusPill(
+    bt: BluetoothDeviceStatus,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.White.copy(alpha = 0.22f),
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Icon(
+                imageVector = AppIcons.Bluetooth,
+                contentDescription = stringResource(R.string.cd_bluetooth),
+                tint = Color(0xFF64B5F6).copy(alpha = if (bt.connected) 0.95f else 0.45f),
+                modifier = Modifier.size(18.dp),
+            )
+            if (bt.batteryLevel >= 0) {
+                Text(
+                    text = "${bt.batteryLevel}%",
+                    style = MaterialTheme.typography.labelMedium.copy(fontFeatureSettings = "tnum"),
+                    color = if (bt.batteryLevel in 0..20) Color(0xFFE57373) else Color.White.copy(alpha = 0.85f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun WeatherStatusPill(
+    weather: WeatherData,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(CircleShape),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color.Transparent,
+            focusedContainerColor = Color.White.copy(alpha = 0.22f),
+            contentColor = Color.White,
+            focusedContentColor = Color.White,
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.1f),
+    ) {
+        Row(
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            val icon = when (weather.condition.lowercase()) {
+                "rain", "showers", "thunderstorm" -> AppIcons.Rain
+                "partly cloudy", "foggy" -> AppIcons.Cloud
+                else -> AppIcons.Sun
+            }
+            val tint = if (weather.condition.lowercase() == "clear") Color(0xFFFFD54F) else Color(0xFF90CAF9)
+            Icon(
+                imageVector = icon,
+                contentDescription = stringResource(R.string.cd_weather),
+                tint = tint,
+                modifier = Modifier.size(18.dp),
+            )
+            Text(
+                text = weather.temp,
+                style = MaterialTheme.typography.titleSmall.copy(fontFeatureSettings = "tnum"),
+                color = Color.White.copy(alpha = 0.95f),
+            )
+        }
     }
 }
 

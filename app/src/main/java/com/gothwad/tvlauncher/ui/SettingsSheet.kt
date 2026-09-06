@@ -85,9 +85,15 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import kotlinx.serialization.json.Json
 
+import android.net.Uri
+import android.provider.Settings
+import androidx.compose.foundation.layout.Spacer
+import androidx.core.content.ContextCompat
+import com.gothwad.tvlauncher.data.UsageTracker
+
 private val format = Json { ignoreUnknownKeys = true; prettyPrint = true; encodeDefaults = true }
 
-private enum class SettingsScreen { Main, Wallpaper, Display, StatusBar, Apps, Categories, Launcher, About }
+private enum class SettingsScreen { Main, Wallpaper, Display, StatusBar, Apps, Categories, Launcher, Permissions, About }
 
 /**
  * Settings panel built entirely from focusable rows and buttons — every
@@ -208,6 +214,7 @@ fun SettingsSheet(
                         onApps = { screen = SettingsScreen.Apps },
                         onCategories = { screen = SettingsScreen.Categories },
                         onLauncher = { screen = SettingsScreen.Launcher },
+                        onPermissions = { screen = SettingsScreen.Permissions },
                         onAndroidSettings = { Actions.openSystemSettings(context) },
                         onAbout = { screen = SettingsScreen.About },
                     )
@@ -289,6 +296,9 @@ fun SettingsSheet(
                     SettingsScreen.About -> AboutScreen(
                         onBack = { screen = SettingsScreen.Main },
                     )
+                    SettingsScreen.Permissions -> PermissionsScreen(
+                        onBack = { screen = SettingsScreen.Main },
+                    )
                     SettingsScreen.Launcher -> LauncherSettingsSubscreen(
                         config = config,
                         store = store,
@@ -313,6 +323,7 @@ private fun MainScreen(
     onApps: () -> Unit,
     onCategories: () -> Unit,
     onLauncher: () -> Unit,
+    onPermissions: () -> Unit,
     onAndroidSettings: () -> Unit,
     onAbout: () -> Unit,
 ) {
@@ -366,6 +377,12 @@ private fun MainScreen(
 
         // ---- System ----
         SectionLabel(stringResource(R.string.group_system))
+        SettingsItem(
+            selected = false, onClick = onPermissions,
+            headlineContent = { Text(stringResource(R.string.item_permissions)) },
+            supportingContent = { Text(stringResource(R.string.item_permissions_sub)) },
+            leadingContent = { Icon(AppIcons.Dashboard, contentDescription = null) },
+        )
         SettingsItem(
             selected = false, onClick = onLauncher,
             headlineContent = { Text(stringResource(R.string.item_launcher_settings)) },
@@ -1446,6 +1463,248 @@ private fun SmallIconButton(
         Box(Modifier.size(34.dp), contentAlignment = Alignment.Center) {
             // label is the accessibility name announced by TalkBack.
             Icon(icon, contentDescription = label, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+/* ------------------------------ permissions screen ------------------------------ */
+
+@Composable
+private fun PermissionsScreen(onBack: () -> Unit) {
+    val context = LocalContext.current
+    var refreshKey by remember { mutableStateOf(0) }
+
+    val hasUsage = remember(refreshKey) { UsageTracker.hasPermission(context) }
+    val hasLocation = remember(refreshKey) {
+        ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+    val hasMic = remember(refreshKey) {
+        ContextCompat.checkSelfPermission(
+            context,
+            android.Manifest.permission.RECORD_AUDIO
+        ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+    }
+    val hasOverlay = remember(refreshKey) {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+            Settings.canDrawOverlays(context)
+        } else true
+    }
+
+    val locationLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { refreshKey = refreshKey + 1 }
+
+    val micLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { refreshKey = refreshKey + 1 }
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(20.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                stringResource(R.string.permissions_title),
+                style = MaterialTheme.typography.titleLarge,
+                modifier = Modifier.padding(start = 8.dp),
+            )
+            SmallIconButton(icon = AppIcons.Close, label = "Back", onClick = onBack)
+        }
+
+        Text(
+            text = "Grant permissions to unlock all smart TV features. You can toggle them anytime.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+        )
+
+        // 1. Most Used Apps (Usage Access)
+        PermissionCard(
+            title = stringResource(R.string.permission_usage_title),
+            description = stringResource(R.string.permission_usage_desc),
+            icon = AppIcons.Star,
+            granted = hasUsage,
+            buttonText = if (hasUsage) "Granted" else "Grant in Settings",
+            onClick = {
+                runCatching {
+                    context.startActivity(android.content.Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS).apply {
+                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    })
+                }
+            }
+        )
+
+        // 2. Weather & Day/Night (Location)
+        PermissionCard(
+            title = stringResource(R.string.permission_location_title),
+            description = stringResource(R.string.permission_location_desc),
+            icon = AppIcons.Sun,
+            granted = hasLocation,
+            buttonText = if (hasLocation) "Granted" else "Enable Location",
+            onClick = {
+                locationLauncher.launch(android.Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+        )
+
+        // 3. Voice Search (Microphone)
+        PermissionCard(
+            title = stringResource(R.string.permission_mic_title),
+            description = stringResource(R.string.permission_mic_desc),
+            icon = AppIcons.Mic,
+            granted = hasMic,
+            buttonText = if (hasMic) "Granted" else "Allow Microphone",
+            onClick = {
+                micLauncher.launch(android.Manifest.permission.RECORD_AUDIO)
+            }
+        )
+
+        // 4. Quick TV Dashboard / Side Panel (Draw Over Other Apps)
+        PermissionCard(
+            title = stringResource(R.string.permission_overlay_title),
+            description = stringResource(R.string.permission_overlay_desc),
+            icon = AppIcons.Dashboard,
+            granted = hasOverlay,
+            buttonText = if (hasOverlay) "Granted" else "Enable Overlay",
+            onClick = {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
+                    runCatching {
+                        context.startActivity(
+                            android.content.Intent(
+                                Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                                Uri.parse("package:${context.packageName}")
+                            ).apply { flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK }
+                        )
+                    }
+                }
+            }
+        )
+
+        // 5. Bluetooth Remote Battery Status
+        PermissionCard(
+            title = stringResource(R.string.permission_bt_title),
+            description = stringResource(R.string.permission_bt_desc),
+            icon = AppIcons.Bluetooth,
+            granted = true,
+            buttonText = "Bluetooth Settings",
+            onClick = {
+                runCatching {
+                    context.startActivity(android.content.Intent(Settings.ACTION_BLUETOOTH_SETTINGS).apply {
+                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    })
+                }
+            }
+        )
+
+        // 6. Remote Button Remapping (Accessibility Service)
+        PermissionCard(
+            title = stringResource(R.string.permission_accessibility_title),
+            description = stringResource(R.string.permission_accessibility_desc),
+            icon = AppIcons.Gear,
+            granted = true,
+            buttonText = "Accessibility Settings",
+            onClick = {
+                runCatching {
+                    context.startActivity(android.content.Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+                        flags = android.content.Intent.FLAG_ACTIVITY_NEW_TASK
+                    })
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun PermissionCard(
+    title: String,
+    description: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    granted: Boolean,
+    buttonText: String,
+    onClick: () -> Unit,
+) {
+    Surface(
+        onClick = onClick,
+        shape = ClickableSurfaceDefaults.shape(RoundedCornerShape(16.dp)),
+        colors = ClickableSurfaceDefaults.colors(
+            containerColor = Color(0xFF1E2129),
+            focusedContainerColor = Color(0xFF2C3240),
+        ),
+        scale = ClickableSurfaceDefaults.scale(focusedScale = 1.02f),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(CircleShape)
+                    .background(if (granted) Color(0xFF2E7D32).copy(alpha = 0.25f) else Color.White.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = if (granted) Color(0xFF81C784) else Color.White.copy(alpha = 0.7f),
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Spacer(Modifier.width(16.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = Color.White,
+                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(if (granted) Color(0xFF2E7D32) else Color(0xFFE65100))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = if (granted) "Active" else "Action needed",
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp),
+                            color = Color.White,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(4.dp))
+                Text(
+                    text = description,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = Color.White.copy(alpha = 0.65f),
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(if (granted) Color.White.copy(alpha = 0.1f) else Color(0xFF4C8DF6))
+                    .padding(horizontal = 12.dp, vertical = 8.dp)
+            ) {
+                Text(
+                    text = buttonText,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White,
+                )
+            }
         }
     }
 }

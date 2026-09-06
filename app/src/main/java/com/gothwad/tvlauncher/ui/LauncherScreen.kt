@@ -84,6 +84,11 @@ import com.gothwad.tvlauncher.data.LAYOUT_GRID
 import com.gothwad.tvlauncher.data.LauncherConfig
 import com.gothwad.tvlauncher.data.NetStatus
 import com.gothwad.tvlauncher.data.networkStatusFlow
+import com.gothwad.tvlauncher.data.BluetoothDeviceStatus
+import com.gothwad.tvlauncher.data.WeatherData
+import com.gothwad.tvlauncher.data.WeatherRepository
+import com.gothwad.tvlauncher.data.UsageTracker
+import com.gothwad.tvlauncher.data.bluetoothStatusFlow
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.flowOn
@@ -283,6 +288,16 @@ fun LauncherApp(rescanTick: Int) {
     val net by remember { networkStatusFlow(context).flowOn(Dispatchers.IO) }
         .collectAsStateWithLifecycle(initialValue = NetStatus())
 
+    val bt by remember { bluetoothStatusFlow(context).flowOn(Dispatchers.IO) }
+        .collectAsStateWithLifecycle(initialValue = BluetoothDeviceStatus())
+
+    var weather by remember { mutableStateOf(WeatherData()) }
+    var weatherRefreshTick by remember { mutableIntStateOf(0) }
+
+    var showVoiceSearch by remember { mutableStateOf(false) }
+    var showDashboard by remember { mutableStateOf(false) }
+    var showWeatherDetails by remember { mutableStateOf(false) }
+
     // Bump on every ON_RESUME so the clock/date refresh immediately after
     // sleep — they normally only tick on minute boundaries via produceState.
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
@@ -350,14 +365,24 @@ fun LauncherApp(rescanTick: Int) {
         mutableStateOf(com.gothwad.tvlauncher.service.NotificationManagerBridge.isNotificationAccessGranted(context))
     }
 
-    LaunchedEffect(resumeTick) {
+    LaunchedEffect(resumeTick, weatherRefreshTick) {
         hasNotificationPermission = com.gothwad.tvlauncher.service.NotificationManagerBridge.isNotificationAccessGranted(context)
+        weather = WeatherRepository.getWeather(context)
     }
 
     // Drop empty sections: an empty row is dead space AND a focus trap that
     // stops D-pad navigation from reaching the section below it.
-    val categorized = remember(apps, config) {
-        AppRepository.categorize(apps, config).filter { it.second.isNotEmpty() }
+    val categorized = remember(apps, config, resumeTick) {
+        val base = AppRepository.categorize(apps, config).filter { it.second.isNotEmpty() }
+        if (UsageTracker.hasPermission(context)) {
+            val mostUsedPkgs = UsageTracker.getMostUsedPackageNames(context, limit = 8)
+            val appsByPkg = apps.associateBy { it.pkg }
+            val mostUsedList = mostUsedPkgs.mapNotNull { appsByPkg[it] }
+            if (mostUsedList.isNotEmpty()) {
+                val freqCat = com.gothwad.tvlauncher.data.CategoryCfg("__frequent__", "Frequently Used")
+                listOf(freqCat to mostUsedList) + base
+            } else base
+        } else base
     }
     // The dock's flat app list (all sections concatenated, de-duped). Hoisted &
     // remembered so its identity stays stable across recompositions — otherwise a
@@ -715,12 +740,18 @@ fun LauncherApp(rescanTick: Int) {
                 ) {
                     StatusBar(
                         net = net,
+                        bt = bt,
+                        weather = weather,
                         time = time,
                         date = date,
                         showVpn = config.showVpnButton,
                         glass = config.statusBarGlass,
                         notificationCount = notifications.size,
                         hasNotificationPermission = hasNotificationPermission,
+                        onDashboardClick = { showDashboard = true },
+                        onVoiceSearchClick = { showVoiceSearch = true },
+                        onBluetoothClick = { showDashboard = true },
+                        onWeatherClick = { showWeatherDetails = true },
                         onNotificationsClick = { showNotifications = true },
                         onVpnClick = {
                             if (config.vpnApp.isNotEmpty()) Actions.launchApp(context, config.vpnApp)
@@ -914,6 +945,34 @@ fun LauncherApp(rescanTick: Int) {
                         showSettings = false
                         scope.launch { store.update { it.copy(setupDone = false) } }
                     },
+                )
+            }
+
+            if (showVoiceSearch) {
+                VoiceSearchDialog(
+                    apps = apps,
+                    onDismiss = { showVoiceSearch = false },
+                )
+            }
+
+            if (showDashboard) {
+                QuickDashboardDialog(
+                    net = net,
+                    bt = bt,
+                    apps = apps,
+                    onDismiss = { showDashboard = false },
+                    onOpenSettings = {
+                        showDashboard = false
+                        showSettings = true
+                    },
+                )
+            }
+
+            if (showWeatherDetails) {
+                WeatherDetailsDialog(
+                    weather = weather,
+                    onRefresh = { weatherRefreshTick++ },
+                    onDismiss = { showWeatherDetails = false },
                 )
             }
         }
