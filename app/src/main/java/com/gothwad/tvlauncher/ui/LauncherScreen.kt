@@ -1561,7 +1561,7 @@ private fun LoadingScreen() {
             label = "pulse",
         )
         Image(
-            painter = androidx.compose.ui.res.painterResource(com.gothwad.tvlauncher.R.drawable.ic_couch),
+            painter = androidx.compose.ui.res.painterResource(com.gothwad.tvlauncher.R.drawable.app_icon),
             contentDescription = null,
             modifier = Modifier
                 .size(88.dp)

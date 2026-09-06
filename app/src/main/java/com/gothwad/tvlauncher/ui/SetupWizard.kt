@@ -120,7 +120,7 @@ fun SetupWizard(onDone: () -> Unit, onVpnChosen: (String?) -> Unit) {
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 Image(
-                    painter = painterResource(R.drawable.ic_couch),
+                    painter = painterResource(R.drawable.app_icon),
                     contentDescription = null,
                     modifier = Modifier.size(44.dp),
                 )

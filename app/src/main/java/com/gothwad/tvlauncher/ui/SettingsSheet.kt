@@ -370,7 +370,7 @@ private fun MainScreen(
             selected = false, onClick = onLauncher,
             headlineContent = { Text(stringResource(R.string.item_launcher_settings)) },
             supportingContent = { Text(stringResource(R.string.item_launcher_settings_sub)) },
-            leadingContent = { Icon(painter = androidx.compose.ui.res.painterResource(R.drawable.ic_couch), contentDescription = null, modifier = Modifier.size(24.dp)) },
+            leadingContent = { Icon(painter = androidx.compose.ui.res.painterResource(R.drawable.app_icon), contentDescription = null, modifier = Modifier.size(24.dp)) },
         )
         SettingsItem(
             selected = false, onClick = onAndroidSettings,
@@ -408,7 +408,7 @@ private fun AboutScreen(
             modifier = Modifier.padding(start = 8.dp, top = 4.dp),
         ) {
             Image(
-                painter = androidx.compose.ui.res.painterResource(R.drawable.ic_couch),
+                painter = androidx.compose.ui.res.painterResource(R.drawable.app_icon),
                 contentDescription = null,
                 modifier = Modifier.size(44.dp),
             )
@@ -444,28 +444,6 @@ private fun AboutScreen(
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.primary,
             modifier = Modifier.padding(start = 8.dp, top = 8.dp),
-        )
-
-        // Support — scannable QR to Buy me a coffee (Cookie script font; brand name, not localized)
-        Text(
-            stringResource(R.string.about_coffee),
-            fontFamily = androidx.compose.ui.text.font.FontFamily(
-                androidx.compose.ui.text.font.Font(R.font.cookie)
-            ),
-            fontSize = 30.sp,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(top = 14.dp),
-        )
-        Image(
-            painter = androidx.compose.ui.res.painterResource(R.drawable.qr_coffee),
-            contentDescription = stringResource(R.string.about_coffee),
-            modifier = Modifier
-                .align(Alignment.CenterHorizontally)
-                .padding(top = 6.dp)
-                .size(150.dp)
-                .clip(RoundedCornerShape(10.dp)),
         )
 
         Text(
@@ -795,12 +773,6 @@ private fun LauncherSettingsSubscreen(
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var langScreen by remember { mutableStateOf(false) }
-
-    if (langScreen) {
-        LanguageScreen(config = config, store = store, onBack = { langScreen = false })
-        return
-    }
 
     fun saveConfig() {
         scope.launch {
@@ -877,13 +849,6 @@ private fun LauncherSettingsSubscreen(
         )
         SettingsItem(
             selected = false,
-            onClick = { langScreen = true },
-            headlineContent = { Text(stringResource(R.string.item_language)) },
-            supportingContent = { Text(stringResource(R.string.item_language_sub)) },
-            leadingContent = { Icon(AppIcons.Language, contentDescription = null) },
-        )
-        SettingsItem(
-            selected = false,
             onClick = { saveConfig() },
             headlineContent = { Text(stringResource(R.string.item_save_config)) },
             supportingContent = { Text(stringResource(R.string.item_save_config_sub)) },
@@ -903,46 +868,6 @@ private fun LauncherSettingsSubscreen(
             supportingContent = { Text(stringResource(R.string.rerun_wizard_sub)) },
             leadingContent = { Icon(AppIcons.Play, contentDescription = null) },
         )
-    }
-}
-
-/* ------------------------------ language ------------------------------ */
-
-@Composable
-private fun LanguageScreen(
-    config: LauncherConfig,
-    store: ConfigStore,
-    onBack: () -> Unit,
-) {
-    val scope = rememberCoroutineScope()
-    Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(
-            stringResource(R.string.item_language),
-            style = MaterialTheme.typography.titleLarge,
-            modifier = Modifier.padding(bottom = 12.dp, start = 8.dp),
-        )
-        val f = initialFocus()
-        com.gothwad.tvlauncher.data.LANGUAGES.forEachIndexed { i, code ->
-            // Endonym: each language named in its own tongue (no per-language strings)
-            val label = if (code.isEmpty()) stringResource(R.string.lang_system)
-            else java.util.Locale(code).let { it.getDisplayName(it) }
-                .replaceFirstChar { it.uppercase() }
-            SettingsItem(
-                selected = false,
-                onClick = {
-                    // Just persist it; LauncherApp mirrors it and recreates.
-                    if (code != config.language) scope.launch {
-                        store.update { it.copy(language = code) }
-                    }
-                },
-                headlineContent = { Text(label) },
-                trailingContent = { CheckMark(checked = config.language == code) },
-                modifier = if (i == 0) Modifier.focusRequester(f) else Modifier,
-            )
-        }
     }
 }
 
